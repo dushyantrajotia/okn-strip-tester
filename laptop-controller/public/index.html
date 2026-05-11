@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OKN Strip Tester Controller</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <main class="app">
+      <div id="eyeAlert" class="eye-alert" style="display: none;"></div>
+
+      <header class="topbar card">
+        <div class="title-wrap">
+          <h1>OKN Strip Tester</h1>
+          <p>Laptop Controller</p>
+        </div>
+
+        <div class="status-wrap">
+          <label for="serverHost">Laptop IP / Host</label>
+          <input id="serverHost" value="ws://10.142.71.198:8080/ws" />
+          <button id="reconnectBtn">Reconnect Panel</button>
+          <div id="phoneStatus" class="status disconnected">Phone: Disconnected</div>
+        </div>
+      </header>
+
+      <section class="global card">
+        <h2>Global Controls</h2>
+        <div class="global-grid">
+          <button id="startBothBtn" class="primary">Start Both</button>
+          <button id="stopBothBtn" class="danger">Stop Both</button>
+          <button id="vrToggleBtn" class="primary">VR: ON</button>
+        </div>
+        <div class="global-grid">
+          <label class="switch-row">
+            <span>Sync Mode</span>
+            <input id="syncMode" type="checkbox" />
+          </label>
+        </div>
+      </section>
+
+      <section class="columns">
+        <article class="eye card" id="leftEyePanel">
+          <h3>Left Eye Controls</h3>
+          <div class="field">
+            <label for="left-width">Strip Width</label>
+            <select id="left-width"></select>
+          </div>
+          <div class="field">
+            <label for="left-speed">Stimulus Speed: <span id="left-speed-value">60°/s</span></label>
+            <select id="left-speed"></select>
+          </div>
+          <div class="field">
+            <label for="left-contrast">Contrast</label>
+            <select id="left-contrast"></select>
+          </div>
+          <div class="field two-col">
+            <div>
+              <label for="left-strip">Strip Color</label>
+              <input id="left-strip" type="color" value="#ff0000" />
+            </div>
+            <div>
+              <label for="left-bg">Background</label>
+              <input id="left-bg" type="color" value="#000000" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="left-direction">Direction</label>
+            <select id="left-direction">
+              <option value="rtl">Right-to-Left</option>
+              <option value="ltr">Left-to-Right</option>
+            </select>
+          </div>
+          <div class="action-row">
+            <button data-eye="left" data-action="start" class="primary eye-action">Start Left</button>
+            <button data-eye="left" data-action="stop" class="danger eye-action">Stop Left</button>
+          </div>
+        </article>
+
+        <article class="eye card" id="rightEyePanel">
+          <h3>Right Eye Controls</h3>
+          <div class="field">
+            <label for="right-width">Strip Width</label>
+            <select id="right-width"></select>
+          </div>
+          <div class="field">
+            <label for="right-speed">Stimulus Speed: <span id="right-speed-value">60°/s</span></label>
+            <select id="right-speed"></select>
+          </div>
+          <div class="field">
+            <label for="right-contrast">Contrast</label>
+            <select id="right-contrast"></select>
+          </div>
+          <div class="field two-col">
+            <div>
+              <label for="right-strip">Strip Color</label>
+              <input id="right-strip" type="color" value="#ff0000" />
+            </div>
+            <div>
+              <label for="right-bg">Background</label>
+              <input id="right-bg" type="color" value="#000000" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="right-direction">Direction</label>
+            <select id="right-direction">
+              <option value="rtl">Right-to-Left</option>
+              <option value="ltr">Left-to-Right</option>
+            </select>
+          </div>
+          <div class="action-row">
+            <button data-eye="right" data-action="start" class="primary eye-action">Start Right</button>
+            <button data-eye="right" data-action="stop" class="danger eye-action">Stop Right</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="logs card">
+        <h3>Device Messages</h3>
+        <pre id="logPanel"></pre>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

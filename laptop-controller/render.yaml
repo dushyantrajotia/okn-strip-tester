@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: okn-controller-ws
+    env: node
+    plan: free
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    root: .
+    envVars:
+      - key: NODE_ENV
+        value: production
