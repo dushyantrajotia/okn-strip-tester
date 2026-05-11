@@ -261,7 +261,7 @@ class _OknHomePageState extends State<OknHomePage>
 
   IOWebSocketChannel? _channel;
   bool _isSocketConnected = false;
-  String _socketUrl = 'ws://10.142.71.198:8080/ws';
+  String _socketUrl = 'wss://okn-controller-ws.onrender.com/ws';
 
   @override
   void initState() {
