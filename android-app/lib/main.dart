@@ -182,7 +182,7 @@ class EyeParams {
   const EyeParams({
     required this.widthMm,
     required this.speedLevel,
-    required this.contrastLevel,
+    required this.contrastPercent,
     required this.stripColor,
     required this.bgColor,
     required this.direction,
@@ -190,7 +190,7 @@ class EyeParams {
 
   final double widthMm;
   final int speedLevel;
-  final String contrastLevel;
+  final double contrastPercent;
   final Color stripColor;
   final Color bgColor;
   final StripDirection direction;
@@ -198,7 +198,7 @@ class EyeParams {
   EyeParams copyWith({
     double? widthMm,
     int? speedLevel,
-    String? contrastLevel,
+    double? contrastPercent,
     Color? stripColor,
     Color? bgColor,
     StripDirection? direction,
@@ -206,7 +206,7 @@ class EyeParams {
     return EyeParams(
       widthMm: widthMm ?? this.widthMm,
       speedLevel: speedLevel ?? this.speedLevel,
-      contrastLevel: contrastLevel ?? this.contrastLevel,
+      contrastPercent: contrastPercent ?? this.contrastPercent,
       stripColor: stripColor ?? this.stripColor,
       bgColor: bgColor ?? this.bgColor,
       direction: direction ?? this.direction,
@@ -231,6 +231,9 @@ class OknHomePage extends StatefulWidget {
 
 class _OknHomePageState extends State<OknHomePage>
     with TickerProviderStateMixin {
+  // Device-specific physical size correction: expected 10mm, measured 31mm.
+  static const double _dpiCalibrationFactor = 10.0 / 31.0;
+
   bool _useVrStereo = true;
   late EyeGazeTracker _eyeTracker;
 
@@ -238,7 +241,7 @@ class _OknHomePageState extends State<OknHomePage>
     params: const EyeParams(
       widthMm: 11.5,
       speedLevel: 60,
-      contrastLevel: 'full',
+      contrastPercent: 100,
       stripColor: Color(0xFFFF0000),
       bgColor: Color(0xFF000000),
       direction: StripDirection.rtl,
@@ -249,7 +252,7 @@ class _OknHomePageState extends State<OknHomePage>
     params: const EyeParams(
       widthMm: 11.5,
       speedLevel: 60,
-      contrastLevel: 'full',
+      contrastPercent: 100,
       stripColor: Color(0xFFFF0000),
       bgColor: Color(0xFF000000),
       direction: StripDirection.rtl,
@@ -413,10 +416,11 @@ class _OknHomePageState extends State<OknHomePage>
     final speedValueRaw = params['speedDegPerSec'] ?? params['speedLevel'];
     final speedLevel = _normalizeSpeed(speedValueRaw, base.speedLevel);
 
-    final contrastRaw = params['contrastLevel'];
-    final contrastLevel = contrastRaw == null
-        ? base.contrastLevel
-        : contrastRaw.toString().toLowerCase();
+    final contrastPercent = _normalizeContrastPercent(
+      params['contrastPercent'],
+      base.contrastPercent,
+      params['contrastLevel'],
+    );
 
     final stripColor =
         _colorFromHex(params['stripColor']?.toString()) ?? base.stripColor;
@@ -430,11 +434,55 @@ class _OknHomePageState extends State<OknHomePage>
     return base.copyWith(
       widthMm: widthMm,
       speedLevel: speedLevel,
-      contrastLevel: contrastLevel,
+      contrastPercent: contrastPercent,
       stripColor: stripColor,
       bgColor: bgColor,
       direction: direction,
     );
+  }
+
+  double _normalizeContrastPercent(
+    dynamic rawContrastPercent,
+    double fallback,
+    dynamic legacyContrastLevel,
+  ) {
+    double? parsed;
+
+    if (rawContrastPercent is num) {
+      parsed = rawContrastPercent.toDouble();
+    } else if (rawContrastPercent is String) {
+      parsed = double.tryParse(rawContrastPercent);
+    }
+
+    parsed ??= _contrastPercentFromLegacyLevel(legacyContrastLevel);
+    parsed ??= fallback;
+
+    return parsed.clamp(50.0, 100.0);
+  }
+
+  double? _contrastPercentFromLegacyLevel(dynamic legacyLevel) {
+    if (legacyLevel == null) {
+      return null;
+    }
+
+    switch (legacyLevel.toString().toLowerCase()) {
+      case 'full':
+        return 100.0;
+      case '1':
+        return 50.0;
+      case '2':
+        return 75.0;
+      case '3':
+        return 87.5;
+      case '4':
+        return 93.75;
+      case '5':
+        return 96.8;
+      case '6':
+        return 98.44;
+      default:
+        return null;
+    }
   }
 
   int _normalizeSpeed(dynamic rawSpeed, int fallback) {
@@ -516,7 +564,7 @@ class _OknHomePageState extends State<OknHomePage>
 
   double _currentDpi() {
     final mq = MediaQuery.of(context);
-    return mq.devicePixelRatio * 160.0;
+    return mq.devicePixelRatio * 160.0 * _dpiCalibrationFactor;
   }
 
   double _mmToPx(double mm, double dpi) {
@@ -924,7 +972,7 @@ class StripedFieldPainter extends CustomPainter {
     final bgPaint = Paint()..color = params.bgColor;
     canvas.drawRect(Offset.zero & size, bgPaint);
 
-    final contrastReduction = _contrastReduction(params.contrastLevel);
+    final contrastReduction = 1.0 - (params.contrastPercent / 100.0);
     final stripColor = _blendTowardBackground(
       params.stripColor,
       params.bgColor,
@@ -939,25 +987,6 @@ class StripedFieldPainter extends CustomPainter {
         x < size.width + period;
         x += period) {
       canvas.drawRect(Rect.fromLTWH(x, 0, widthPx, size.height), stripePaint);
-    }
-  }
-
-  double _contrastReduction(String level) {
-    switch (level) {
-      case '1':
-        return 0.50;
-      case '2':
-        return 0.75;
-      case '3':
-        return 0.875;
-      case '4':
-        return 0.9375;
-      case '5':
-        return 0.968;
-      case '6':
-        return 0.9844;
-      default:
-        return 0.0;
     }
   }
 

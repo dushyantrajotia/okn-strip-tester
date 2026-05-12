@@ -1,16 +1,6 @@
 const WIDTH_OPTIONS = [28.8, 23.3, 17, 11.5, 5.8, 2.87, 1.43];
 const SPEED_OPTIONS = [20, 30, 40, 50, 60, 70, 80, 90, 100, 160];
 
-const CONTRAST_OPTIONS = [
-  { value: 'full', label: 'Full Contrast' },
-  { value: '1', label: 'Level 1 - 50%' },
-  { value: '2', label: 'Level 2 - 75%' },
-  { value: '3', label: 'Level 3 - 87.5%' },
-  { value: '4', label: 'Level 4 - 93.75%' },
-  { value: '5', label: 'Level 5 - 96.8%' },
-  { value: '6', label: 'Level 6 - 98.44%' },
-];
-
 const state = {
   sync: false,
   ws: null,
@@ -18,7 +8,7 @@ const state = {
   left: {
     widthMm: 11.5,
     speedDegPerSec: 60,
-    contrastLevel: 'full',
+    contrastPercent: 100,
     stripColor: '#ff0000',
     bgColor: '#000000',
     direction: 'rtl',
@@ -26,7 +16,7 @@ const state = {
   right: {
     widthMm: 11.5,
     speedDegPerSec: 60,
-    contrastLevel: 'full',
+    contrastPercent: 100,
     stripColor: '#ff0000',
     bgColor: '#000000',
     direction: 'rtl',
@@ -105,12 +95,20 @@ function buildUpdatePayload(eye, data) {
     params: {
       widthMm: data.widthMm,
       speedDegPerSec: Number(data.speedDegPerSec),
-      contrastLevel: data.contrastLevel === 'full' ? 'full' : Number(data.contrastLevel),
+      contrastPercent: Number(data.contrastPercent.toFixed(2)),
       stripColor: data.stripColor.toUpperCase(),
       bgColor: data.bgColor.toUpperCase(),
       direction: data.direction,
     },
   };
+}
+
+function clampContrastPercent(value, fallback = 100) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.min(100, Math.max(50, Math.round(numeric * 100) / 100));
 }
 
 function applySync(sourceEye) {
@@ -204,19 +202,13 @@ function bindEye(eye) {
   const widthEl = document.getElementById(`${prefix}-width`);
   const speedEl = document.getElementById(`${prefix}-speed`);
   const speedValueEl = document.getElementById(`${prefix}-speed-value`);
-  const contrastEl = document.getElementById(`${prefix}-contrast`);
+  const contrastSliderEl = document.getElementById(`${prefix}-contrast-slider`);
+  const contrastInputEl = document.getElementById(`${prefix}-contrast-input`);
   const stripEl = document.getElementById(`${prefix}-strip`);
   const bgEl = document.getElementById(`${prefix}-bg`);
   const directionEl = document.getElementById(`${prefix}-direction`);
 
   populateSelect(widthEl, WIDTH_OPTIONS, (v) => `${v} mm`, (v) => v, model.widthMm);
-  populateSelect(
-    contrastEl,
-    CONTRAST_OPTIONS,
-    (v) => v.label,
-    (v) => v.value,
-    model.contrastLevel
-  );
 
   populateSelect(
     speedEl,
@@ -226,6 +218,9 @@ function bindEye(eye) {
     model.speedDegPerSec
   );
   speedValueEl.textContent = `${model.speedDegPerSec}°/s`;
+  model.contrastPercent = clampContrastPercent(model.contrastPercent);
+  contrastSliderEl.value = model.contrastPercent.toFixed(2);
+  contrastInputEl.value = model.contrastPercent.toFixed(2);
   stripEl.value = model.stripColor;
   bgEl.value = model.bgColor;
   directionEl.value = model.direction;
@@ -243,8 +238,28 @@ function bindEye(eye) {
     applySync(eye);
   });
 
-  contrastEl.addEventListener('change', () => {
-    model.contrastLevel = contrastEl.value;
+  contrastSliderEl.addEventListener('input', () => {
+    model.contrastPercent = clampContrastPercent(contrastSliderEl.value, model.contrastPercent);
+    contrastInputEl.value = model.contrastPercent.toFixed(2);
+    sendCommand(buildUpdatePayload(eye, model));
+    applySync(eye);
+  });
+
+  contrastInputEl.addEventListener('input', () => {
+    const typedValue = Number(contrastInputEl.value);
+    if (!Number.isFinite(typedValue)) {
+      return;
+    }
+    model.contrastPercent = clampContrastPercent(typedValue, model.contrastPercent);
+    contrastSliderEl.value = model.contrastPercent.toFixed(2);
+    sendCommand(buildUpdatePayload(eye, model));
+    applySync(eye);
+  });
+
+  contrastInputEl.addEventListener('change', () => {
+    model.contrastPercent = clampContrastPercent(contrastInputEl.value, model.contrastPercent);
+    contrastInputEl.value = model.contrastPercent.toFixed(2);
+    contrastSliderEl.value = model.contrastPercent.toFixed(2);
     sendCommand(buildUpdatePayload(eye, model));
     applySync(eye);
   });
@@ -273,7 +288,9 @@ function hydrateEyeUi(eye) {
   document.getElementById(`${eye}-width`).value = String(model.widthMm);
   document.getElementById(`${eye}-speed`).value = String(model.speedDegPerSec);
   document.getElementById(`${eye}-speed-value`).textContent = `${model.speedDegPerSec}°/s`;
-  document.getElementById(`${eye}-contrast`).value = String(model.contrastLevel);
+  model.contrastPercent = clampContrastPercent(model.contrastPercent);
+  document.getElementById(`${eye}-contrast-slider`).value = model.contrastPercent.toFixed(2);
+  document.getElementById(`${eye}-contrast-input`).value = model.contrastPercent.toFixed(2);
   document.getElementById(`${eye}-strip`).value = model.stripColor;
   document.getElementById(`${eye}-bg`).value = model.bgColor;
   document.getElementById(`${eye}-direction`).value = model.direction;
