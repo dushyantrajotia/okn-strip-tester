@@ -11,6 +11,7 @@ dependencies:
   web_socket_channel: ^2.4.0
   camera: ^0.10.5
   google_mlkit_face_mesh_detection: ^0.4.2
+  shared_preferences: ^2.1.0
 
 dev_dependencies:
   flutter_test:

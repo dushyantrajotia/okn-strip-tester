@@ -9,6 +9,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_mesh_detection/google_mlkit_face_mesh_detection.dart';
 import 'package:web_socket_channel/io.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -231,8 +232,8 @@ class OknHomePage extends StatefulWidget {
 
 class _OknHomePageState extends State<OknHomePage>
     with TickerProviderStateMixin {
-  // Device-specific physical size correction: expected 10mm, measured 31mm.
-  static const double _dpiCalibrationFactor = 10.0 / 31.0;
+  // Device-specific physical size correction factor (default applied for this device)
+  double _dpiCalibrationFactor = 10.0 / 31.0;
 
   bool _useVrStereo = true;
   late EyeGazeTracker _eyeTracker;
@@ -271,6 +272,7 @@ class _OknHomePageState extends State<OknHomePage>
     super.initState();
     _ticker = createTicker(_onFrame)..start();
     unawaited(_connectWebSocket());
+    _loadCalibration();
     _eyeTracker = EyeGazeTracker(
       onMovementDetected: (message) {
         _sendSocketMessage({
@@ -281,6 +283,18 @@ class _OknHomePageState extends State<OknHomePage>
       },
     );
     unawaited(_eyeTracker.initialize());
+  }
+
+  Future<void> _loadCalibration() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final val = prefs.getDouble('dpiCalibrationFactor');
+      if (val != null && val > 0) {
+        setState(() {
+          _dpiCalibrationFactor = val;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -641,6 +655,14 @@ class _OknHomePageState extends State<OknHomePage>
       builder: (context) {
         final dpi = _currentDpi();
         final lineLengthPx = _mmToPx(10, dpi);
+        final measuredController = TextEditingController();
+        double previewFactor = _dpiCalibrationFactor;
+        void recomputePreview() {
+          final typed = double.tryParse(measuredController.text);
+          if (typed != null && typed > 0) {
+            previewFactor = 10.0 / typed;
+          }
+        }
         return AlertDialog(
           scrollable: true,
           title: const Text('10mm Calibration Reference'),
@@ -663,7 +685,29 @@ class _OknHomePageState extends State<OknHomePage>
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                      'If mismatch is significant, adjust by device-specific calibration factor in code.'),
+                      'If mismatch is significant, enter the measured length (mm) below and Save. This will store a device calibration factor.'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: measuredController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Measured length of the line (mm)',
+                      hintText: 'e.g. 31 or 31.00',
+                    ),
+                    onChanged: (_) {
+                      setState(() {
+                        recomputePreview();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Current calibration factor: ${_dpiCalibrationFactor.toStringAsFixed(5)}'),
+                  const SizedBox(height: 4),
+                  Builder(builder: (_) {
+                    recomputePreview();
+                    return Text('Preview factor if saved: ${previewFactor.toStringAsFixed(5)}');
+                  }),
                 ],
               ),
             ),
@@ -672,6 +716,25 @@ class _OknHomePageState extends State<OknHomePage>
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final typed = double.tryParse(measuredController.text);
+                if (typed == null || typed <= 0) {
+                  Navigator.of(context).pop();
+                  return;
+                }
+                final factor = 10.0 / typed;
+                try {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setDouble('dpiCalibrationFactor', factor);
+                } catch (_) {}
+                setState(() {
+                  _dpiCalibrationFactor = factor;
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
             ),
           ],
         );
